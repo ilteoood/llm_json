@@ -13,11 +13,13 @@ struct True;
 struct False;
 struct Null;
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum JsonNumber {
     Integer(i64),
     Float(f64),
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum JsonValue {
     True,
     False,
@@ -27,6 +29,7 @@ enum JsonValue {
     Object(HashMap<String, JsonValue>),
 }
 
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum BoolsOrNull {
     True,
     False,
@@ -382,4 +385,52 @@ impl JSONParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_number() {
+        let mut parser = JSONParser::new("123".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Integer(123))));
+    }
+
+    #[test]
+    fn test_parse_number_float() {
+        let mut parser = JSONParser::new("123.456".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(123.456))));
+    }
+
+    #[test]
+    fn test_parse_number_float_with_e() {
+        let mut parser = JSONParser::new("123.456e-7".to_string());
+        let value = parser.parse_number();
+        assert_eq!(
+            value,
+            Some(JsonValue::Number(JsonNumber::Float(123.456e-7)))
+        );
+    }
+
+    #[test]
+    fn test_parse_number_float_with_E() {
+        let mut parser = JSONParser::new("123.456E-7".to_string());
+        let value = parser.parse_number();
+        assert_eq!(
+            value,
+            Some(JsonValue::Number(JsonNumber::Float(123.456e-7)))
+        );
+    }
+
+    #[test]
+    fn test_parse_number_float_with_slash() {
+        let mut parser = JSONParser::new("123.456/".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(123.456))));
+    }
+
+    #[test]
+    fn test_parse_number_float_with_comma() {
+        let mut parser = JSONParser::new("123.456,".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(123.456))));
+    }
 }
