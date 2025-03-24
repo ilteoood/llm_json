@@ -1,6 +1,3 @@
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum ContextValues {
     ObjectKey,
