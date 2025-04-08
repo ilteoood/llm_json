@@ -1,6 +1,6 @@
 mod context;
 
-use std::collections::{btree_map::Values, HashMap};
+use std::collections::{HashMap, btree_map::Values};
 
 pub use context::*;
 
@@ -352,8 +352,87 @@ impl JSONParser {
         return None;
     }
 
+    // https://github.com/mangiucugna/json_repair/blob/d1a781e012f86ac46c772e3dcdbe8f65fa9aeb54/src/json_repair/json_parser.py#L708
     fn parse_comment(&mut self) -> Option<String> {
-        unimplemented!("parse_comment");
+        // Parse code-like comments:
+        // - "# comment": A line comment that continues until a newline.
+        // - "// comment": A line comment that continues until a newline.
+        // - "/* comment */": A block comment that continues until the closing delimiter "*/".
+        // The comment is skipped over and an empty string is returned so that comments do not interfere
+        // with the actual JSON elements.
+
+        let mut char = self.get_char_at(None);
+        let mut termination_characters = vec!['\n', '\r'];
+
+        if self.context.context.contains(&ContextValues::Array) {
+            termination_characters.push(']');
+        } else if self.context.context.contains(&ContextValues::ObjectValue) {
+            termination_characters.push('}');
+        } else if self.context.context.contains(&ContextValues::ObjectKey) {
+            termination_characters.push(':');
+        }
+
+        // Line comment starting with '#'
+        if char == Some('#') {
+            let mut comment = String::new();
+
+            while char.is_some() && !termination_characters.contains(&char.unwrap()) {
+                comment += &char.unwrap().to_string();
+                self.index += 1;
+                char = self.get_char_at(None);
+            }
+            self.log(&format!("Found line comment: {}", comment));
+
+            return None;
+        }
+        // Comments starting with '/'
+        else if char == Some('/') {
+            let mut comment = String::new();
+            let next_char = self.get_char_at(Some(1));
+
+            if next_char == Some('/') {
+                comment = "//".to_string();
+                self.index += 2;
+                char = self.get_char_at(None);
+
+                while char.is_some() && !termination_characters.contains(&char.unwrap()) {
+                    comment += &char.unwrap().to_string();
+                    self.index += 1;
+                    char = self.get_char_at(None);
+                }
+                self.log(&format!("Found line comment: {}", comment));
+                return None;
+            // Handle block comment starting with /*
+            } else if next_char == Some('*') {
+                comment = "/*".to_string();
+                self.index += 2;
+
+                loop {
+                    char = self.get_char_at(None);
+                    if char.is_none() {
+                        self.log("Reached end-of-string while parsing block comment; unclosed block comment.");
+                        break;
+                    }
+
+                    comment += &char.unwrap().to_string();
+                    self.index += 1;
+                    if comment.ends_with("*/") {
+                        break;
+                    }
+                }
+
+                self.log(&format!("Found block comment: {}", comment));
+                return None;
+            // Not a recognized comment pattern, skip the slash.
+            } else {
+                self.index += 1;
+                return None;
+            }
+        }
+
+        // Should not be reached: if for some reason the current character does not start a comment, skip it.
+        self.index += 1;
+
         None
     }
 
@@ -453,5 +532,35 @@ mod tests {
         let mut parser = JSONParser::new("-123.4e93".to_string());
         let value = parser.parse_number();
         assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(-123.4e93))));
+    }
+
+    // #[test]
+    // fn test_parse_boolean_or_null() {
+    //     let mut parser = JSONParser::new("true".to_string());
+    //     let value = parser.parse_boolean_or_null();
+    //     assert_eq!(value, Some(BoolsOrNull::True));
+
+    //     let mut parser = JSONParser::new("false".to_string());
+    //     let value = parser.parse_boolean_or_null();
+    //     assert_eq!(value, Some(BoolsOrNull::False));
+
+    //     let mut parser = JSONParser::new("null".to_string());
+    //     let value = parser.parse_boolean_or_null();
+    //     assert_eq!(value, Some(BoolsOrNull::Null));
+    // }
+
+    #[test]
+    fn test_parse_comment() {
+        let mut parser = JSONParser::new("# comment\n".to_string());
+        let value = parser.parse_comment();
+        assert_eq!(value, None);
+
+        let mut parser = JSONParser::new("// comment\n".to_string());
+        let value = parser.parse_comment();
+        assert_eq!(value, None);
+
+        let mut parser = JSONParser::new("/* comment */".to_string());
+        let value = parser.parse_comment();
+        assert_eq!(value, None);
     }
 }
