@@ -1,6 +1,6 @@
 mod context;
 
-use std::collections::{HashMap, btree_map::Values};
+use std::collections::{btree_map::Values, HashMap};
 
 pub use context::*;
 
@@ -432,5 +432,26 @@ mod tests {
         let mut parser = JSONParser::new("123.456,".to_string());
         let value = parser.parse_number();
         assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(123.456))));
+    }
+
+    #[test]
+    fn test_parse_number_negative() {
+        let mut parser = JSONParser::new("-123.456".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(-123.456))));
+    }
+
+    #[test]
+    fn test_parse_number_negative_integer() {
+        let mut parser = JSONParser::new("-123".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Integer(-123))));
+    }
+
+    #[test]
+    fn test_parse_number_negative_float_with_e() {
+        let mut parser = JSONParser::new("-123.4e93".to_string());
+        let value = parser.parse_number();
+        assert_eq!(value, Some(JsonValue::Number(JsonNumber::Float(-123.4e93))));
     }
 }
