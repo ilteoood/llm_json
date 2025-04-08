@@ -27,6 +27,7 @@ enum JsonValue {
     String(String),
     Number(JsonNumber),
     Object(HashMap<String, JsonValue>),
+    Array(Vec<JsonValue>),
 }
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
@@ -86,9 +87,19 @@ impl JSONParser {
         unimplemented!();
     }
 
-    fn get_char_at(&self, count: Option<usize>) -> Option<char> {
-        let index = count.unwrap_or(0) + self.index;
-        self.json_str.get(index).copied()
+    fn get_char_at(&self, offset: Option<isize>) -> Option<char> {
+        match offset {
+            Some(offset) => {
+                let index = if offset >= 0 {
+                    self.index.checked_add(offset as usize)
+                } else {
+                    self.index.checked_sub((-offset) as usize)
+                };
+
+                index.and_then(|idx| self.json_str.get(idx).copied())
+            }
+            None => self.json_str.get(self.index).copied(),
+        }
     }
 
     fn parse_object(&mut self) -> Option<JsonValue> {
@@ -159,6 +170,54 @@ impl JSONParser {
 
         self.index += 1;
         return panic!();
+    }
+
+    // https://github.com/mangiucugna/json_repair/blob/d1a781e012f86ac46c772e3dcdbe8f65fa9aeb54/src/json_repair/json_parser.py#L194
+    fn parse_array(&mut self) -> Option<Vec<JsonValue>> {
+        // <array> ::= '[' [ <json> *(', ' <json>) ] ']' ; A sequence of JSON values separated by commas
+        let mut arr: Vec<JsonValue> = Vec::new();
+        self.context.set(ContextValues::Array);
+
+        let mut char = self.get_char_at(None);
+
+        while char.is_some() && !matches!(char, Some(']') | Some('}')) {
+            let mut value = self.parse_json();
+            self.skip_whitespaces_at(None, None);
+
+            if let Some(v) = value {
+                // It is possible that parse_json() returns nothing valid, so we increase by 1
+                match &v {
+                    JsonValue::String(s) if s == "" => {
+                        self.index += 1;
+                    }
+                    JsonValue::String(s)
+                        if s == "..." && self.get_char_at(Some(-1)) == Some('.') =>
+                    {
+                        self.log("While parsing an array, found a stray '...'; ignoring it")
+                    }
+                    _ => {
+                        arr.push(v);
+                    }
+                }
+            }
+
+            // skip over whitespace after a value but before closing ]
+            char = self.get_char_at(None);
+            while char.is_some() && (char.unwrap().is_whitespace() || char.unwrap() == ',') {
+                self.index += 1;
+                char = self.get_char_at(None);
+            }
+        }
+
+        // Especially at the end of an LLM generated json you might miss the last "]"
+        if char.is_some() && char.unwrap() != ']' {
+            self.log("While parsing an array we missed the closing ], ignoring it");
+        }
+
+        self.index += 1;
+        self.context.reset();
+
+        Some(arr)
     }
 
     fn parse_string(&mut self) -> Option<String> {
