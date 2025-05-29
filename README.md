@@ -6,7 +6,7 @@ This is a porting of the Python library [json_repair](https://github.com/mangiuc
 
 All credits go to the original author for the amazing work.
 
-## Programmatig Usage
+## Programmatic Usage
 
 Install `llm_json` in your project: 
 
