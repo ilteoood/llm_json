@@ -6,11 +6,15 @@ This is a porting of the Python library [json_repair](https://github.com/mangiuc
 
 All credits go to the original author for the amazing work.
 
-## Usage
+## Programmatig Usage
+
+Install `llm_json` in your project: 
 
 ```sh
 cargo add llm_json
 ```
+
+Then use it to repair your broken JSON strings:
 
 ```rust
 use llm_json::{repair_json, loads, JsonRepairError};
@@ -24,6 +28,30 @@ fn main() {
   // Parse directly to Value
   let value = loads(broken_json, &Default::default())?;
 }
+```
+
+## CLI Usage
+
+Install `llm_json` locally:
+
+```sh
+cargo install llm_json
+```
+
+Then use it to repair your broken JSON strings and files:
+
+```sh
+# Repair JSON from stdin
+echo '{name: "John", age: 30,}' | json_repair
+
+# Repair a file
+json_repair broken.json
+
+# Save to new file
+json_repair input.json -o fixed.json
+
+# Fix file in-place
+json_repair broken.json --inline
 ```
 
 ## License
