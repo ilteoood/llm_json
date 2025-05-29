@@ -42,16 +42,16 @@ Then use it to repair your broken JSON strings and files:
 
 ```sh
 # Repair JSON from stdin
-echo '{name: "John", age: 30,}' | json_repair
+echo '{name: "John", age: 30,}' | llm_json
 
 # Repair a file
-json_repair broken.json
+llm_json broken.json
 
 # Save to new file
-json_repair input.json -o fixed.json
+llm_json input.json -o fixed.json
 
 # Fix file in-place
-json_repair broken.json --inline
+llm_json broken.json --inline
 ```
 
 ## License
