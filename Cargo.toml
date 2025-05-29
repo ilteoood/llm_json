@@ -6,7 +6,7 @@ license = "MIT"
 repository = "https://github.com/oramasearch/llm_json"
 readme = "README.md"
 description = "A command-line tool to convert JSON files to LLM-friendly formats."
-keywords = ["LLM", "JSON Fixer", "fix"]
+keywords = ["LLM", "json-fixer", "fix"]
 
 [[bin]]
 name = "llm_json"
