@@ -15,13 +15,15 @@ cargo add llm_json
 ```rust
 use llm_json::{repair_json, loads, JsonRepairError};
 
-// Basic repair
-let broken_json = r#"{name: 'John', age: 30,}"#;
-let repaired = repair_json(broken_json, &Default::default())?;
-println!("{}", repaired); // {"name": "John", "age": 30}
-
-// Parse directly to Value
-let value = loads(broken_json, &Default::default())?;
+fn main() {
+  // Basic repair
+  let broken_json = r#"{name: 'John', age: 30,}"#;
+  let repaired = repair_json(broken_json, &Default::default())?;
+  println!("{}", repaired); // {"name": "John", "age": 30}
+  
+  // Parse directly to Value
+  let value = loads(broken_json, &Default::default())?;
+}
 ```
 
 ## License
