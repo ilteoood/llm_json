@@ -23,11 +23,11 @@
 //!
 //! // Basic repair
 //! let broken_json = r#"{name: 'John', age: 30,}"#;
-//! let repaired = repair_json(broken_json, &Default::default())?;
+//! let repaired = repair_json(broken_json, &Default::default()).unwrap();
 //! println!("{}", repaired); // {"name": "John", "age": 30}
 //!
 //! // Parse directly to Value
-//! let value = loads(broken_json, &Default::default())?;
+//! let value = loads(broken_json, &Default::default()).unwrap();
 //! ```
 
 use serde_json::Value;
@@ -422,9 +422,21 @@ impl JsonRepairParser {
         let mut needs_comma = false;
 
         loop {
+            let pos_before = self.pos; // Safety check for infinite loops
+
             self.skip_whitespace();
             self.skip_comments();
             self.skip_whitespace();
+
+            if needs_comma && !expecting_key {
+                if let Some(ch) = self.current_char() {
+                    if ch == '"' || ch == '\'' || ch.is_alphabetic() || ch == '_' {
+                        self.append_char(',');
+                        expecting_key = true;
+                        needs_comma = false;
+                    }
+                }
+            }
 
             match self.current_char() {
                 None => {
@@ -479,15 +491,6 @@ impl JsonRepairParser {
                         // Parse value
                         self.parse_value()?;
 
-                        // Check if we need to add a missing comma
-                        self.skip_whitespace();
-                        if matches!(self.current_char(), Some('"') | Some('\''))
-                            || (self.current_char().map_or(false, |c| c.is_alphabetic()))
-                        {
-                            // Looks like another key follows without a comma
-                            self.append_char(',');
-                        }
-
                         expecting_key = false;
                         needs_comma = true;
                     } else {
@@ -499,6 +502,12 @@ impl JsonRepairParser {
                         needs_comma = true;
                     }
                 }
+            }
+
+            // Safety check: ensure we're making progress
+            if self.pos == pos_before && self.pos < self.input.len() {
+                // We're stuck - advance one character to avoid infinite loop
+                self.advance();
             }
         }
 
@@ -622,9 +631,12 @@ impl JsonRepairParser {
 /// ```rust
 /// use llm_json::{repair_json, RepairOptions};
 ///
-/// let broken = r#"{name: 'John', age: 30,}"#;
-/// let repaired = repair_json(broken, &RepairOptions::default())?;
-/// assert_eq!(repaired, r#"{"name":"John","age":30}"#);
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let broken   = r#"{name: 'John', age: 30,}"#;
+///     let repaired = repair_json(broken, &RepairOptions::default())?;
+///     assert_eq!(repaired, r#"{"age":30,"name":"John"}"#);
+///     Ok(())
+/// }
 /// ```
 pub fn repair_json(json_str: &str, options: &RepairOptions) -> Result<String, JsonRepairError> {
     if json_str.trim().is_empty() {
@@ -673,7 +685,7 @@ pub fn repair_json(json_str: &str, options: &RepairOptions) -> Result<String, Js
 /// use serde_json::Value;
 ///
 /// let broken = r#"{name: 'John', age: 30}"#;
-/// let value = loads(broken, &RepairOptions::default())?;
+/// let value: Value = loads(broken, &RepairOptions::default()).unwrap();
 ///
 /// if let Value::Object(obj) = value {
 ///     assert_eq!(obj["name"], "John");
