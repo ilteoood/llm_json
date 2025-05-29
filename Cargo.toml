@@ -1,10 +1,10 @@
 [package]
-name = "llm-json"
+name = "llm_json"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "json_repair"
+name = "llm_json"
 path = "src/bin/main.rs"
 
 [dependencies]

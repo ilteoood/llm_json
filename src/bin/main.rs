@@ -1,8 +1,7 @@
 use clap::{Arg, ArgAction, Command};
 use llm_json::{RepairOptions, repair_json};
 use std::fs;
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::io::{self, Read};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("json_repair")
