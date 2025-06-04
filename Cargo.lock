@@ -173,6 +173,7 @@ name = "llm_json"
 version = "1.0.2"
 dependencies = [
  "clap",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror",

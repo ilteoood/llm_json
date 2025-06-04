@@ -1,5 +1,6 @@
 use clap::{Arg, ArgAction, Command};
 use llm_json::{RepairOptions, repair_json};
+use serde::Serialize;
 use std::fs;
 use std::io::{self, Read};
 
@@ -76,7 +77,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let parsed: serde_json::Value = serde_json::from_str(&repaired)?;
     let pretty = if indent > 0 {
-        serde_json::to_string_pretty(&parsed)?
+        let mut buf = Vec::new();
+        let indent_template = b" ".repeat(indent);
+        let formatter = serde_json::ser::PrettyFormatter::with_indent(&indent_template.as_slice());
+        let mut ser = serde_json::Serializer::with_formatter(&mut buf, formatter);
+        parsed.serialize(&mut ser)?;
+        String::from_utf8(buf)?
     } else {
         serde_json::to_string(&parsed)?
     };
